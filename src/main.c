@@ -3,41 +3,31 @@
 #include "memory_monitor.h"
 #include "disk_monitor.h"
 #include "network_monitor.h"
+#include "logger.h"
+#include <unistd.h>
+
+#define LOG_INTERVAL 5
 
 int main() {
-
-  printf("System Monitor Starting...\n");
-
-  // Initialize CPU monitoring
-  float cpu_usage = get_cpu_usage();
-  if (cpu_usage >= 0) {
-    printf("CPU Usage: %.2f%%\n", cpu_usage);
-  } else {
-    printf("Failed to retrieve CPU usage. \n");
+  
+  FILE *log_file = init_log("system_metrics.csv");
+  if (log_file == NULL) {
+    return 1;
   }
 
-  float memory_usage = get_memory_usage();
-  if (memory_usage >= 0) {
-    printf("Memory Usage: %.2f%%\n", memory_usage);
-  } else {
-    printf("Failed to retrieve Memory Usage.\n");
+  while (1) {
+    // Fetch metrics 
+    double cpu_usage = get_cpu_usage();
+    double mem_usage = get_memory_usage();
+    double disk_usage= get_disk_usage("/");
+    unsigned long long rx_bytes, tx_bytes;
+    get_network_usage("wlp1s0", &rx_bytes, &tx_bytes);
+
+    log_metrics(log_file, cpu_usage, mem_usage, disk_usage, rx_bytes, tx_bytes);
+    sleep(LOG_INTERVAL);
   }
 
-  float disk_usage = get_disk_usage("/");
-  if (disk_usage >= 0) {
-    printf("Disk Usage on '/': %.2f%%\n", disk_usage);
-  } else {
-    printf("Failed to retrieve Disk Usage.\n");
-  }
-
-  unsigned long long rx_bytes, tx_bytes;
-  if (get_network_usage("wlp1s0", &rx_bytes, &tx_bytes) == 0) {
-    printf("Network Usage (wslp1s0):\n");
-    printf("  Received: %llu bytes.\n", rx_bytes/1024);
-    printf("  Transmitted: %llu bytes.\n", tx_bytes/1024);
-  } else {
-    printf("Failed to retrieve network usage for interface 'wlp1s0'.\n");
-  }
+  close_log(log_file);
 
   return 0;
 }
