@@ -5,11 +5,16 @@
 #include "network_monitor.h"
 #include "logger.h"
 #include <unistd.h>
-
-#define LOG_INTERVAL 5
+#include "config_parser.h"
 
 int main() {
   
+  int log_interval = get_logging_interval("config.ini");
+  if (log_interval <= 0) {
+    fprintf(stderr, "Invalid or missing logging interval. Using default of 5 seconds.\n");
+    log_interval = 5;
+  }
+
   FILE *log_file = init_log("system_metrics.csv");
   if (log_file == NULL) {
     return 1;
@@ -24,7 +29,7 @@ int main() {
     get_network_usage("wlp1s0", &rx_bytes, &tx_bytes);
 
     log_metrics(log_file, cpu_usage, mem_usage, disk_usage, rx_bytes, tx_bytes);
-    sleep(LOG_INTERVAL);
+    sleep(log_interval);
   }
 
   close_log(log_file);
